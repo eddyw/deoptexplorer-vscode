@@ -11,7 +11,7 @@ import { StringSet } from "./collections/stringSet";
 import { readFileAsync, tryReadFileAsync } from "./fs";
 import { LineMap } from "./lineMap";
 import { Script } from "./script";
-import { extractSourceMappingURL, getInlineSourceMapData, SourceMap } from "./sourceMap";
+import { getSourceMapData, SourceMap } from "./sourceMap";
 import { ensureUriTrailingDirectorySeparator, relativeUriFragment, resolveUri, uriExtname } from "./uri";
 
 export type OkFileResolution = { readonly result: "ok" };
@@ -263,7 +263,7 @@ export class Sources {
     private _getFileResolution(resolution: InternalFileResolution): FileResolution {
         return isSkipLike(resolution) ? fileSkip :
             isOkLike(resolution) ? fileOk :
-            resolution;
+                resolution;
     }
 
     private _recordResolution(file: Uri, resolution: InternalFileResolution) {
@@ -427,17 +427,15 @@ export class Sources {
                 return undefined;
             }
 
-            const url = extractSourceMappingURL(content, resolved);
-            if (url === undefined) {
+            const { url, data } = getSourceMapData(content, resolved);
+            if (url === null) {
                 // content is available and no source map could be discovered
                 // mark the file as not having a source map
                 this._sourceMaps.set(resolved, "no-sourcemap");
                 return "no-sourcemap";
             }
 
-            // If we are able to parse an inline source map, store the result
-            const data = getInlineSourceMapData(url);
-            if (data !== undefined) {
+            if (data !== null) {
                 try {
                     sourceMap = new SourceMap(resolved, data, resolved);
                 }

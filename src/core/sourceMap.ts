@@ -255,19 +255,36 @@ export class SourceMapping {
 
 const sourceMapDataUrlRegExp = /^data:application\/json[^,]+base64,(?<data>.*)/;
 
-export function extractSourceMappingURL(content: string, file: Uri) {
+function extractSourceMappingURL(content: string) {
     // NOTE: copied from source-map-support, see the third party license notice above.
     const re = /(?:\/\/[@#][\s]*sourceMappingURL=([^\s'"]+)[\s]*$)|(?:\/\*[@#][\s]*sourceMappingURL=([^\s*'"]+)[\s]*(?:\*\/)[\s]*$)/mg;
     let lastMatch, match;
     while (match = re.exec(content)) lastMatch = match;
-    const sourceMappingURL = lastMatch?.[1] || lastMatch?.[2];
-    return sourceMappingURL ? resolveUri(file, sourceMappingURL) : undefined;
+
+    return lastMatch?.[1];
 }
 
-export function getInlineSourceMapData(sourceMappingURL: Uri): string | undefined {
-    const match = sourceMappingURL.scheme === "data" ? sourceMapDataUrlRegExp.exec(sourceMappingURL.toString()) : undefined;
-    if (match?.groups) {
-        return Buffer.from(match.groups.data, "base64").toString();
+export function getSourceMapData(content:string, file: Uri) {
+    const maybeSourceMappingURL = extractSourceMappingURL(content);
+
+    if (!maybeSourceMappingURL) {
+        return {
+            url: null,
+            data: null,
+        };
+    }
+
+    if (sourceMapDataUrlRegExp.test(maybeSourceMappingURL)) {
+        const base64Data = maybeSourceMappingURL.slice(maybeSourceMappingURL.indexOf(",") + 1);
+        return {
+            url: file,
+            data: Buffer.from(base64Data, "base64").toString(),
+        }
+    }
+
+    return {
+        url: resolveUri(file, maybeSourceMappingURL),
+        data: null,
     }
 }
 
